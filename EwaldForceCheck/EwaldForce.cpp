@@ -298,7 +298,12 @@ O  core 0.00 0.00 0.50
 									dr[1] = dr[1] - rny*Ly;
 									dr[2] = dr[2] - rnz*Lz;
 
-									dr_2 = dp(dr,dr);												
+									dr_2 = dp(dr,dr);
+
+									/*
+										equation by Grad (E_short) 
+									*/
+
 									force_x[i] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr);
 									force_y[i] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr);
 									force_z[i] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[2]/norm(dr);
@@ -358,7 +363,9 @@ O  core 0.00 0.00 0.50
 
 								g_2 = dp(gr,gr);
 								dr_2= dp(dr,dr);
-
+								/*
+									equation by Grad (E_long)
+								*/
 								force_x[i] += TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[0];
 								force_y[i] += TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[1];
 								force_z[i] += TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[2];
