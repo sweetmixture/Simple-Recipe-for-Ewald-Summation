@@ -36,6 +36,8 @@ int main()
 	double Lx,Ly,Lz;
 	double V;
 	Lx = Ly = Lz = 4.2112;		// In Angs		// Lz = 6;
+	Lx = 4.;
+	Lz = 4.4;
 	V = Lx*Ly*Lz;			// In Angs**3
 
 	double Real_E, Reci_E;
@@ -63,6 +65,7 @@ int main()
 	charge[7] = -2; 
 
 	frac_x[0] = frac_y[0] = frac_z[0] = 0.;
+	frac_x[0] = 0.05;
 
 	frac_x[1] = 0.5;
 	frac_y[1] = 0.52;
@@ -79,6 +82,7 @@ int main()
 
 	frac_x[5] = 0.5;
 	frac_y[5] = frac_z[5] = 0.;
+	frac_z[5] = 0.04;
 	
 	frac_x[6] = frac_z[6] = 0.;
 	frac_y[6] = 0.5;
