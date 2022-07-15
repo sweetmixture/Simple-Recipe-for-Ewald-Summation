@@ -36,8 +36,9 @@ int main()
 	double Lx,Ly,Lz;
 	double V;
 	Lx = Ly = Lz = 4.2112;		// In Angs		// Lz = 6;
-	Lx = 4.;
-	Lz = 4.4;
+	Lx = 3.89;
+	Ly = 4.3;
+	Lz = 3.2;
 	V = Lx*Ly*Lz;			// In Angs**3
 
 	double Real_E, Reci_E;
@@ -86,6 +87,8 @@ int main()
 	
 	frac_x[6] = frac_z[6] = 0.;
 	frac_y[6] = 0.5;
+	frac_x[6] = -0.2;
+	frac_z[6] = 0.32;
 
 	frac_x[7] = frac_y[7] = 0.;
 	frac_z[7] = 0.5;
@@ -116,7 +119,7 @@ O  core 0.00 0.00 0.50
 
 	// EwaldSum Info
 	double rcut, gcut;	// cut offs
-	rcut = gcut = 125.;
+	rcut = gcut = 40.;
 	// ---------------------------> Set to 50 Angs.. not sure how to optimise efficient Truncate Radii
 
 	double Sigma = (Lx+Ly+Lz)/5.6;
@@ -127,7 +130,7 @@ O  core 0.00 0.00 0.50
 	double dr[3];		// working r1 - r2 vectors in RealSpace
 	double gr[3];
 	double nx,ny,nz;	// variables for translational cell images;
-	nx = ny = nz = 50;
+	nx = ny = nz = 10;
 
 	double g_2;
 
@@ -318,14 +321,14 @@ O  core 0.00 0.00 0.50
 									force_y[j] -= TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr);
 									force_z[j] -= TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[2]/norm(dr);
 									
-									/*
-									sd[0] += 0.25*dr[0]*dr[0]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-									sd[1] += 0.25*dr[1]*dr[1]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-									sd[2] += 0.25*dr[2]*dr[2]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-									sd[3] += 0.25*dr[1]*dr[2]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-									sd[4] += 0.25*dr[0]*dr[2]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-									sd[5] += 0.25*dr[0]*dr[1]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-									*/
+							// Strain derivative - https://doi.org/10.1016/j.cpc.2015.01.003, Knuth et al
+							sd[0] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr) * dr[0];
+							sd[1] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr) * dr[1];
+							sd[2] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[2]/norm(dr) * dr[2];
+
+							sd[3] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr) * dr[2];
+							sd[4] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr) * dr[2];
+							sd[5] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr) * dr[1];
 								}
 							}
 							else
@@ -346,21 +349,17 @@ O  core 0.00 0.00 0.50
 								force_x[j] -= TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr);
 								force_y[j] -= TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr);
 								force_z[j] -= TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[2]/norm(dr);
-							/*
-								sd[0] += 0.25*dr[0]*dr[0]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-								sd[1] += 0.25*dr[1]*dr[1]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-								sd[2] += 0.25*dr[2]*dr[2]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-								sd[3] += 0.25*dr[1]*dr[2]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-								sd[4] += 0.25*dr[0]*dr[2]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-								sd[5] += 0.25*dr[0]*dr[1]*TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2));
-							*/
-								/*
-								if ( std::isinf(1./norm(dr)) )
-								{
-									cout << " SUM IS INF !!!\n";
-									return 0;
-								}
-								*/
+							
+
+							// Strain derivative - https://doi.org/10.1016/j.cpc.2015.01.003, Knuth et al
+							sd[0] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr) * dr[0];
+							sd[1] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr) * dr[1];
+							sd[2] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[2]/norm(dr) * dr[2];
+
+							sd[3] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[1]/norm(dr) * dr[2];
+							sd[4] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr) * dr[2];
+							sd[5] += TO_EV*(0.5*charge[i]*charge[j])*((-2./Sigma/sqrt(M_PI))*(exp(-dr_2/Sigma/Sigma)/norm(dr))-(erfc(norm(dr)/Sigma)/dr_2)) * dr[0]/norm(dr) * dr[1];
+
 							}
 						}
 						// =================================================================================================  REAL SUM
@@ -371,7 +370,7 @@ O  core 0.00 0.00 0.50
 
 						gr[0] = 2.*M_PI/Lx * rnx;
 						gr[1] = 2.*M_PI/Ly * rny;
-						gr[2] = 2.*M_PI/Lz * rnz;
+						gr[2] = 2.*M_PI/Lz * rnz;	// this has to be modified to deal with a,b,c != M_PI/2.
 
 						if( norm(gr) < gcut )
 						{
@@ -389,25 +388,62 @@ O  core 0.00 0.00 0.50
 								/*
 									equation by Grad (E_long)
 								*/
-								force_x[i] += TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[0];
-								force_y[i] += TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[1];
-								force_z[i] += TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[2];
+								force_x[i] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[0];
+								force_y[i] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[1];
+								force_z[i] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[2];
 
-								force_x[j] -= TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[0];
-								force_y[j] -= TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[1];
-								force_z[j] -= TO_EV*((-2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*sin(dp(gr,dr)) * gr[2];
-							
-							/*
-								if( norm(dr) != 0. )
-								{
-									sd[0] += 0.25*dr[0]*dr[0]*TO_EV*((+2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*cos(dp(gr,dr))/norm(dr);
-									sd[1] += 0.25*dr[1]*dr[1]*TO_EV*((+2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*cos(dp(gr,dr))/norm(dr);
-									sd[2] += 0.25*dr[2]*dr[2]*TO_EV*((+2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*cos(dp(gr,dr))/norm(dr);
-									sd[3] += 0.25*dr[1]*dr[2]*TO_EV*((+2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*cos(dp(gr,dr))/norm(dr);
-									sd[4] += 0.25*dr[0]*dr[2]*TO_EV*((+2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*cos(dp(gr,dr))/norm(dr);
-									sd[5] += 0.25*dr[0]*dr[1]*TO_EV*((+2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*cos(dp(gr,dr))/norm(dr);
-								}
-							*/
+								force_x[j] -= TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[0];
+								force_y[j] -= TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[1];
+								force_z[j] -= TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[2];
+
+
+								/// Derivatives chain w.r.t r vector (position vectors)
+
+							        sd[0]      += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[0] * dr[0];
+							        sd[1]      += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[1] * dr[1];
+							        sd[2]      += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[2] * dr[2];
+
+								sd[3]	   += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[1] * dr[2];
+								sd[4]	   += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[0] * dr[2];
+								sd[5]	   += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])*exp(-0.25*Sigma*Sigma*g_2)/g_2*-sin(dp(gr,dr)) * gr[0] * dr[1];	// derivative w.r.t real (r_i) !
+
+								/// Derivative chain w.r.t. G vector (reciprocal lattice vectors)
+
+
+								sd[0] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])
+										* ( -2.*exp(-0.25*Sigma*Sigma*g_2)*gr[0]/g_2/g_2*cos(dp(gr,dr))
+										   -0.5*exp(-0.25*Sigma*Sigma*g_2)*gr[0]/g_2*Sigma*Sigma*cos(dp(gr,dr))
+										     -  exp(-0.25*Sigma*Sigma*g_2)/g_2*dr[0]*sin(dp(gr,dr)) ) * -gr[0];
+
+								sd[1] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])
+										* ( -2.*exp(-0.25*Sigma*Sigma*g_2)*gr[1]/g_2/g_2*cos(dp(gr,dr))
+										   -0.5*exp(-0.25*Sigma*Sigma*g_2)*gr[1]/g_2*Sigma*Sigma*cos(dp(gr,dr))
+										     -  exp(-0.25*Sigma*Sigma*g_2)/g_2*dr[1]*sin(dp(gr,dr)) ) * -gr[1];
+
+								sd[2] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])
+										* ( -2.*exp(-0.25*Sigma*Sigma*g_2)*gr[2]/g_2/g_2*cos(dp(gr,dr))
+										   -0.5*exp(-0.25*Sigma*Sigma*g_2)*gr[2]/g_2*Sigma*Sigma*cos(dp(gr,dr))
+										     -  exp(-0.25*Sigma*Sigma*g_2)/g_2*dr[2]*sin(dp(gr,dr)) ) * -gr[2];
+// swap indices - w.r.t. real strain derivative sum
+								sd[3] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])
+										* ( -2.*exp(-0.25*Sigma*Sigma*g_2)*gr[2]/g_2/g_2*cos(dp(gr,dr))
+										   -0.5*exp(-0.25*Sigma*Sigma*g_2)*gr[2]/g_2*Sigma*Sigma*cos(dp(gr,dr))
+										     -  exp(-0.25*Sigma*Sigma*g_2)/g_2*dr[2]*sin(dp(gr,dr)) ) * -gr[1];
+
+								sd[4] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])
+										* ( -2.*exp(-0.25*Sigma*Sigma*g_2)*gr[2]/g_2/g_2*cos(dp(gr,dr))
+										   -0.5*exp(-0.25*Sigma*Sigma*g_2)*gr[2]/g_2*Sigma*Sigma*cos(dp(gr,dr))
+										     -  exp(-0.25*Sigma*Sigma*g_2)/g_2*dr[2]*sin(dp(gr,dr)) ) * -gr[0];
+
+								sd[5] += TO_EV*((2.*M_PI)/V)*(charge[i]*charge[j])
+										* ( -2.*exp(-0.25*Sigma*Sigma*g_2)*gr[1]/g_2/g_2*cos(dp(gr,dr))
+										   -0.5*exp(-0.25*Sigma*Sigma*g_2)*gr[1]/g_2*Sigma*Sigma*cos(dp(gr,dr))
+										     -  exp(-0.25*Sigma*Sigma*g_2)/g_2*dr[1]*sin(dp(gr,dr)) ) * -gr[0];
+
+								/// Derivatives chain w.r.t Cell Volume
+							        sd[0]      += -1.* TO_EV * ((2.*M_PI)/V/V) * V * (charge[i]*charge[j]) * exp(-0.25*Sigma*Sigma*g_2)/g_2 * cos( dp(gr,dr) );
+							        sd[1]      += -1.* TO_EV * ((2.*M_PI)/V/V) * V * (charge[i]*charge[j]) * exp(-0.25*Sigma*Sigma*g_2)/g_2 * cos( dp(gr,dr) );
+							        sd[2]      += -1.* TO_EV * ((2.*M_PI)/V/V) * V * (charge[i]*charge[j]) * exp(-0.25*Sigma*Sigma*g_2)/g_2 * cos( dp(gr,dr) );
 							}
 						}
 						// =================================================================================================  RECIPROCAL SUM
@@ -425,31 +461,18 @@ O  core 0.00 0.00 0.50
 	}
 
 	cout << " END ================================================================================================= Finalise\n";
-/*
-	for(auto i=0;i<NumberOfIons;i++)
-	{	for(auto j=i;j<NumberOfIons;j++)
-		{
-			// Get Cartesian Coord
-			cart_x[i] = Lx*frac_x[i];
-			cart_y[i] = Ly*frac_y[i];
-			cart_z[i] = Lz*frac_z[i];
 
-			cart_x[j] = Lx*frac_x[j];
-			cart_y[j] = Ly*frac_y[j];
-			cart_z[j] = Lz*frac_z[j];
 
-			dr[0] = cart_x[i] - cart_x[j];
-			dr[1] = cart_y[i] - cart_y[j];
-			dr[2] = cart_z[i] - cart_z[j];	// r_i - r_j;
-		
-			sd[0] += force_x[i]*dr[0];
-		}
-	}
-*/
-	for(auto k=0;k<6;k++)
-	{
-		cout << sd[k] << endl;
-	}
+
+	cout << "dE/de1(xx) : " <<  std::setprecision(16)  << sd[0] << endl;
+	cout << "dE/de2(yy) : " <<  std::setprecision(16)  << sd[1] << endl;
+	cout << "dE/de3(zz) : " <<  std::setprecision(16)  << sd[2] << endl;
+	cout << "dE/de4(yz) : " <<  std::setprecision(16)  << sd[3] << endl;
+	cout << "dE/de5(xz) : " <<  std::setprecision(16)  << sd[4] << endl;
+	cout << "dE/de6(xy) : " <<  std::setprecision(16)  << sd[5] << endl;
+
+
+
 	return 0;
 }
 
