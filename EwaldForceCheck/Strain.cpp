@@ -41,6 +41,12 @@ int main()
 	Lz = 3.2;
 	V = Lx*Ly*Lz;			// In Angs**3
 
+
+
+
+
+
+
 	double Real_E, Reci_E;
 	Real_E = Reci_E = 0.;		// In eV
 
@@ -122,15 +128,37 @@ O  core 0.00 0.00 0.50
 	rcut = gcut = 40.;
 	// ---------------------------> Set to 50 Angs.. not sure how to optimise efficient Truncate Radii
 
-	double Sigma = (Lx+Ly+Lz)/5.6;
+	//double Sigma = (Lx+Ly+Lz)/5.6;
+	const double A = 10E-25;		// ACCURACY OF FORCE CALCULATION ...
+	double Sigma = pow(NumberOfIons*M_PI*M_PI*M_PI/V/V,-1./6.);	// ASE default : https://singroup.github.io/dscribe/1.1.x/tutorials/descriptors/ewald_sum_matrix.html
+	
+	rcut = sqrt(-log(A)*Sigma*Sigma);	// GULP default
+	gcut = 2./Sigma * sqrt(-log(A));
+
+
+	cout << "Periodic Summation Parameters\n";
+	printf("Sigma  : %6.12lf\n",Sigma);
+	printf("Rcut   : %6.12lf\n",rcut);
+	printf("Gcut   : %6.12lf\n",gcut);
 
 	//// //// //// MAIN
 	
 	// Working Variables
 	double dr[3];		// working r1 - r2 vectors in RealSpace
 	double gr[3];
-	double nx,ny,nz;	// variables for translational cell images;
-	nx = ny = nz = 10;
+	int nx,ny,nz;	// variables for translational cell images;
+
+	auto lattice_min = std::min({2.*M_PI/Lx,2.*M_PI/Ly,2.*M_PI/Lz,Lx,Ly,Lz});		// This part requires more sophisticate implementation for a general use later
+	int max_grid = static_cast<int>(std::max(rcut,gcut)/lattice_min +1);
+	nx = max_grid;
+	ny = max_grid;
+	nz = max_grid;
+
+	printf("mx grid: %d\t%d\t%d\t%d\n",max_grid,nx,ny,nz);
+
+	//cout << "MIN" << std::min({1,2,3,-5}) << endl;
+
+	//printf("%lf minmax \n", std::max(rcut,gcut));
 
 	double g_2;
 
@@ -254,7 +282,7 @@ O  core 0.00 0.00 0.50
 
 	cout << "Reci_self (eV) : " << std::setprecision(16) << Reci_self << endl;
 	cout << endl;
-	cout << "Recl      (eV) : " << std::setprecision(16) << Real_E << endl;
+	cout << "Real      (eV) : " << std::setprecision(16) << Real_E << endl;
 	cout << "Reci      (eV) : " << std::setprecision(16) << Reci_self + Reci_E << endl;
 	cout << "total     (eV) : " << std::setprecision(16) << Real_E + Reci_E + Reci_self << endl;
 	
