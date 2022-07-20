@@ -28,23 +28,22 @@ public:
 
 	Atom( const double frac_x, const double frac_y, const double frac_z, std::string species, std::string type )
 	{
-		printf("%12.4lf%12.4lf%12.4lf\n",frac_x,frac_y,frac_z);
 		frac(0) = frac_x;
 		frac(1) = frac_y;
 		frac(2) = frac_z;
-		std::cout << "Eigen out\n";
-		std::cout << frac << std::endl;		
 
 		this->species = species;
 		this->type    = type;
-		std::cout << "Atom Init\n";
 	}
 
-	virtual void Show() const
+	virtual void ShowFrac() const
 	{
-		std::cout << frac << std::endl;
-		std::cout << "## Atom Frac\n";
-		std::cout << "frac : " << frac(0) << " " << frac(1) << " " << frac(2) << " " << species << " " << type << std::endl;
+		printf("%4.3s%12.6lf%12.6lf%12.6lf%8.4s%12.6lf\n",species.c_str(),frac(0),frac(1),frac(2),type.c_str(),charge);
+	}
+
+	virtual void ShowReal() const
+	{
+
 	}
 
 	virtual ~Atom()								// Explicit Destructor Check
