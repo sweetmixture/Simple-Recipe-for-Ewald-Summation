@@ -1,10 +1,11 @@
 cell
-4. 4. 4.  90.0 90.0 60.
+4. 4.2112 4.4  90.0 90.0 90.0
 
 #Cell Info testing
 #MgO
 #System
 
+fractional
 atom 0.05 0.00 0.00 Mg	core
 atom 0.50 0.52 0.00 Mg	core
 atom 0.50 0.00 0.50 Mg	core
@@ -15,6 +16,7 @@ atom 0.50 0.00 0.04 O 	core
 atom 0.00 0.50 0.00 O 	core
 atom 0.02 0.00 0.50 O 	core   # Test displacement at 'x_frac'
 
-species Mg core +2
-#species Mg core +1.94
-species O  core -2
+species
+Mg core +2
+# comment
+O  core -2

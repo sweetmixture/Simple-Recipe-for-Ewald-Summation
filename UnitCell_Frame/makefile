@@ -6,7 +6,7 @@ run : test.o atom.o cell.o
 atom.o : atom.cpp atom.hpp
 	$(CC) -c atom.cpp
 
-cell.o : cell.cpp cell.hpp
+cell.o : cell.cpp cell.hpp atom.cpp atom.hpp
 	$(CC) -c cell.cpp
 
 test.o : test.cpp
