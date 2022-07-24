@@ -216,6 +216,8 @@ using std::cos, std::sin, std::sqrt;
 	Manager Man;	// Managing class - interaction
 
 	Man.info(*this);
+	Man.coulomb_mono_mono_real(*this,*this->AtomList[0],*this->AtomList[4]);
+	//Man.mono_mono_real(*AtomList[0],*AtomList[4]);
 
 	Eigen::Vector3d trans;
 	double trans_norm;

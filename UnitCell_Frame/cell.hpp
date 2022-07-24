@@ -2,7 +2,7 @@
 #define __CELL
 
 #include <Eigen/Dense>	// Matrix/Vector Arithematics?
-//#include <string>
+#include <string>
 
 #include "atom.hpp"
 
