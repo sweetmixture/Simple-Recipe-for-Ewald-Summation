@@ -7,7 +7,8 @@
 #include <cstdlib>
 #include <cmath>
 
-#include "Cell.hpp"
+#include "cell.hpp"
+#include "Manager.hpp"
 
 static int line_cnt = 0;
 
@@ -211,6 +212,10 @@ Cell::Cell( std::string input )
 void Cell::CalcCoulombEnergy()
 {
 using std::cos, std::sin, std::sqrt;
+
+	Manager Man;	// Managing class - interaction
+
+	Man.info(*this);
 
 	Eigen::Vector3d trans;
 	double trans_norm;

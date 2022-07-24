@@ -12,6 +12,8 @@
 class Cell
 {
 
+friend class Manager;
+
 private:
 
 	const double TO_EV = 14.39964390675221758120;

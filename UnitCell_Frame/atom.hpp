@@ -10,6 +10,7 @@ class Atom
 {
 
 friend class Cell;				// Allowing access previlege to 'Cell' class, i.e., Cell can access privates of Atom
+friend class Manager;
 
 private:
 
