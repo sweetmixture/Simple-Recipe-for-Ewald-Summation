@@ -4,7 +4,7 @@
 #include <Eigen/Dense>	// Matrix/Vector Arithematics?
 #include <string>
 
-#include "atom.hpp"
+#include "Atom.hpp"
 
 #define DEF_MAX_ATOM_NUMBER 1024
 #define DEF_PERIODIC_SUMM_ACCURACY 10E-25

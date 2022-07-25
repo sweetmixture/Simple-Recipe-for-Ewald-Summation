@@ -2,6 +2,7 @@
 #define __ATOM
 
 #include <Eigen/Core>
+#include <iostream>
 #include <string>
 
 static int cnt = 0;

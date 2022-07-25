@@ -213,11 +213,7 @@ void Cell::CalcCoulombEnergy()
 {
 using std::cos, std::sin, std::sqrt;
 
-	Manager Man;	// Managing class - interaction
-
-	Man.info(*this);
-	Man.coulomb_mono_mono_real(*this,*this->AtomList[0],*this->AtomList[4]);
-	//Man.mono_mono_real(*AtomList[0],*AtomList[4]);
+	Manager manager;	// Managing class - interaction
 
 	Eigen::Vector3d trans;
 	double trans_norm;
@@ -251,12 +247,12 @@ using std::cos, std::sin, std::sqrt;
 							{	
 							    if( i != j )
 							    {
-							    	this->mono_real_energy += 0.5*(this->AtomList[i]->charge*this->AtomList[j]->charge)/r_norm * erfc(r_norm/this->sigma) * this->TO_EV;
+								this->mono_real_energy += manager.CoulombMonoMonoReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 							    }	// h=k=l=0 (central image) - excluding self interaction
 							}
 							else
 							{
-								this->mono_real_energy += 0.5*(this->AtomList[i]->charge*this->AtomList[j]->charge)/r_norm * erfc(r_norm/this->sigma) * this->TO_EV;
+								this->mono_real_energy += manager.CoulombMonoMonoReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 							}
 						}
 						//// END REAL SPACE
@@ -272,15 +268,14 @@ using std::cos, std::sin, std::sqrt;
 						{
 							if( h == 0 && k == 0 && l == 0 )
 							{
-								if( i == j )	// Self interaction
-								{
-									this->mono_reci_self_energy += -(this->AtomList[i]->charge*this->AtomList[j]->charge)/this->sigma/sqrt(M_PI) * this->TO_EV;
-								}
+							    if( i == j )	// Self interaction
+							    {	
+								this->mono_reci_self_energy += manager.CoulombMonoMonoSelf(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+							    }
 							}
 							else
-							{
-									this->mono_reci_energy += ((2.*M_PI)/this->volume)*this->AtomList[i]->charge*this->AtomList[j]->charge \
-										* exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * cos( trans.adjoint()*delta_r ) * this->TO_EV;
+							{	
+								this->mono_reci_self_energy += manager.CoulombMonoMonoSelf(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 							}
 						}
 					}// end l
@@ -316,8 +311,7 @@ void Cell::CalcCoulombDerivative()
 	2) Internal Geometric
 	3) Strain
 */
-
-using std::cos, std::sin, std::sqrt;
+	Manager manager;
 
 	Eigen::Vector3d trans;
 	double trans_norm;
@@ -363,6 +357,8 @@ using std::cos, std::sin, std::sqrt;
 							    {	// Raw Geometric Derivatives
 								this->AtomList[i]->cart_gd += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr))/r_norm * delta_r;
 								this->AtomList[j]->cart_gd -= this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr))/r_norm * delta_r;
+								//this->AtomList[i]->cart_gd += manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								//this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 
 								// Strain Derivatives
 								this->lattice_sd(0,0) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(0);
