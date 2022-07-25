@@ -22,9 +22,6 @@ std::string currentDateTime()
 	return buffer;
 }
 
-
-
-
 static int line_cnt = 0;
 
 Cell::Cell( std::string input )
@@ -138,12 +135,20 @@ Cell::Cell( std::string input )
 				{
 					tmp.clear();
 					ss >> frac[0] >> frac[1] >> frac[2] >> species >> type;
+					ss >> std::skipws; // ignore possible whitespace
 
 					if( !type.compare("core") )
-					{	this->AtomList[NumberOfAtoms++] = new Atom(frac[0],frac[1],frac[2],species,type,real_vector);	// here 'real_vector' contains lattice vectors
+					{	this->AtomList[NumberOfAtoms++] = new Atom(frac[0],frac[1],frac[2],species,type,this->real_vector);	// here 'real_vector' contains lattice vectors
 					}
 					else if( !type.compare("shel") )
-					{	// Need appropriate initialiser
+					{
+						if( ss.peek() == decltype(ss)::traits_type::eof() )	// i.e., if shel position is not specified
+						{	this->AtomList[NumberOfAtoms++] = new Shell(frac[0],frac[1],frac[2],species,type,this->real_vector,frac[0],frac[1],frac[2]);
+						}
+						else							// Case that Shell Frac is given
+						{	double shel_frac[3];	ss >> shel_frac[0] >> shel_frac[1] >> shel_frac[2];
+							this->AtomList[NumberOfAtoms++] = new Shell(frac[0],frac[1],frac[2],species,type,this->real_vector,shel_frac[0],shel_frac[1],shel_frac[2]);
+						}
 					}
 					else if( !type.compare("lone") )
 					{	// Need appropriate initialiser
@@ -161,6 +166,7 @@ Cell::Cell( std::string input )
 				{
 					tmp.clear();
 					ss >> species >> type >> charge;
+					ss >> std::skipws;
 
 					for(int i=0;i<this->NumberOfAtoms;i++)
 					{	
@@ -168,14 +174,12 @@ Cell::Cell( std::string input )
 						{
 							if( !type.compare("core") )
 							{	AtomList[i]->SetFeature(charge);
-								/*
-								double k;
-								ss >> k;
-								std::cout << k << "test\n";
-								*/	// if 'stringstream' ss is empty, gives noting ... expected output '0'
 							}
 							else if( !type.compare("shel") )
-							{	// Need appropriate initialiser
+							{	
+								double shel_charge, k2, k4;
+								ss >> shel_charge >> k2 >> k4;
+								AtomList[i]->SetFeature(charge,shel_charge,k2,k4);
 							}
 							else if( !type.compare("lone") )
 							{	// Need appropriate initialiser
@@ -435,7 +439,7 @@ void Cell::ShowBasicCellInfo() const
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << "    Atom fractional coordinate\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
-	cout << "            x           y           z       type     charge\n";
+	cout << "  species           x           y           z        charge      spring k2/k4\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	for(auto i=0;i<NumberOfAtoms;i++)
 	{	AtomList[i]->ShowFrac();
@@ -443,11 +447,22 @@ void Cell::ShowBasicCellInfo() const
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << "    Atom Cartesian coordinate\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
-	cout << "            x           y           z       type     charge\n";
+	cout << "  species           x           y           z        charge      spring k2/k4\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	for(auto i=0;i<NumberOfAtoms;i++)
 	{	AtomList[i]->ShowCart();
 	}
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << "*********************************************************************************************************\n";
+	cout << endl;
+}
+
+
+void Cell::ShowEnergyDerivative() const
+{
+	using std::cout;
+	using std::endl;
+
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << endl;
 	cout << "    Lattice Summation Method (Ewald) / Accuracy Factor : " << -log10(DEF_PERIODIC_SUMM_ACCURACY) << endl;
@@ -484,24 +499,5 @@ void Cell::ShowBasicCellInfo() const
 	cout << endl;
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << endl;
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

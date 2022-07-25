@@ -5,10 +5,11 @@ atom 0.05 0.00 0.00 Mg	core
 atom 0.49 0.52 0.01 Mg	core
 atom 0.50 0.00 0.50 Mg	core
 atom 0.00 0.52 0.50 Mg	core
-atom 0.50 0.50 0.50 O 	shel  0.50 0.50 0.50
-atom 0.50 0.00 0.04 O 	shel  0.50 0.00 0.04
-atom 0.20 0.50 0.32 O 	shel  0.20 0.50 0.32
-atom 0.00 0.00 0.50 O 	shel  0.00 0.00 0.50
+atom 0.50 0.50 0.50 O 	shel
+atom 0.50 0.00 0.04 O 	shel  0.50 0.00 0.041
+#atom 0.20 0.50 0.32 O 	shel  0.20 0.50 0.321
+atom 0.20 0.50 0.32 O 	shel
+atom 0.00 0.00 0.50 O 	shel  0.00 0.00 0.501
 
 species Mg core +2.
-species O  shel -2.04 +0.04 16.9 0.
+species O  shel 0.04 -2.04 46. 234.

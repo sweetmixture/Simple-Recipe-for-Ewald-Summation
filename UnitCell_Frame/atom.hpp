@@ -14,7 +14,6 @@ friend class Cell;				// Allowing access previlege to 'Cell' class, i.e., Cell c
 friend class Manager;
 
 private:
-
 	double charge;				// Atom charge
 
 	std::string species;			// Atom name
@@ -41,19 +40,20 @@ public:
 		// cartesian r = x_frac * a + y_frac * b + z_frac * c;
 	}
 
-	virtual void SetFeature( const double charge )
+	virtual void SetFeature( const double core_charge, const double shel_charge=0, const double spring_k2=0, const double spring_k4=0)		// VirtualOverriding - must be in the same format
 	{
-		this->charge = charge;
+		this->charge = core_charge;
 	}
 
 	virtual void ShowFrac() const
 	{
-		printf("%4.3s%12.6lf%12.6lf%12.6lf%8.4s%12.6lf\n",species.c_str(),frac(0),frac(1),frac(2),type.c_str(),charge);
+		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf\n",species.c_str(),"core",frac(0),frac(1),frac(2),charge);
 	}
 
 	virtual void ShowCart() const
 	{
-		printf("%4.3s%12.6lf%12.6lf%12.6lf%8.4s%12.6lf\n",species.c_str(),cart(0),cart(1),cart(2),type.c_str(),charge);
+		//printf("%4.3s%12.6lf%12.6lf%12.6lf%8.4s%12.6lf\n",species.c_str(),cart(0),cart(1),cart(2),type.c_str(),charge);
+		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf\n",species.c_str(),"core",cart(0),cart(1),cart(2),charge);
 	}
 
 	virtual ~Atom()								// Explicit Destructor Check
@@ -62,22 +62,62 @@ public:
 		std::cout << "Atom Destructor ~" << cnt << std::endl;
 	}
 
+	std::string GetSpecies() const { return species; }
+	std::string GetType() const { return type; }
 };
 
 class Shell : public Atom
 {
 private:
 
-	double shell_charge;			// Shell charge
+	double shel_charge;			// Shell charge
+	double spring_k2;
+	double spring_k4;
 
-	Eigen::Vector3d shell_frac;		// Below all same but for 'Shell'
-	Eigen::Vector3d shell_cart;
+	Eigen::Vector3d shel_frac;		// Below all same but for 'Shell'
+	Eigen::Vector3d shel_cart;
 	
-	Eigen::Vector3d shell_cart_gd;
-	Eigen::Vector3d shell_cart_gd_int;
+	Eigen::Vector3d shel_cart_gd;
+	Eigen::Vector3d shel_cart_gd_int;
 
 public:
 
+	Shell( const double frac_x, const double frac_y, const double frac_z, std::string species, std::string type, const Eigen::Vector3d* lattice_vector,
+	       const double shel_frac_x, const double shel_frac_y, const double shel_frac_z )
+	: Atom(frac_x,frac_y,frac_z,species,type,lattice_vector)
+	{
+		shel_frac(0) = shel_frac_x;
+		shel_frac(1) = shel_frac_y;
+		shel_frac(2) = shel_frac_z;
+		shel_cart = shel_frac(0)*lattice_vector[0] + shel_frac(1)*lattice_vector[1] + shel_frac(2)*lattice_vector[2];
+	}
+
+	virtual void SetFeature( const double core_charge, const double shel_charge=0, const double spring_k2=0, const double spring_k4=0 ) override		// VirtualOverriding - must be in the same format
+	{																		// Or make pure virutal funcions first in the Base class
+		Atom::SetFeature(core_charge);
+		this->shel_charge = shel_charge;
+		this->spring_k2   = spring_k2;
+		this->spring_k4   = spring_k4;
+	}
+
+	virtual void ShowFrac() const override
+	{	
+		Atom::ShowFrac();
+		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf%12.4lf/%.4lf\n",this->GetSpecies().c_str(),this->GetType().c_str(),this->shel_frac(0),this->shel_frac(1),this->shel_frac(2),
+			this->shel_charge,this->spring_k2,this->spring_k4);
+	}
+
+	virtual void ShowCart() const override
+	{
+		Atom::ShowCart();
+		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf\n",this->GetSpecies().c_str(),this->GetType().c_str(),shel_cart(0),shel_cart(1),shel_cart(2),shel_charge);
+	}
+
+	virtual ~Shell()
+	{
+		cnt++;
+		std::cout << "Shell Destructor ~" << cnt << std::endl;
+	}
 };
 
 class LonePair : public Atom

@@ -3,7 +3,7 @@ CC=/usr/local/Cellar/gcc/10.2.0/bin/g++-10 -std=c++20 -I /usr/local/Cellar/eigen
 run : test.o Cell.o Manager.o Atom.hpp
 	$(CC) -o run test.o Cell.o Manager.o
 
-Cell.o : cell.cpp cell.hpp Atom.hpp Manager.hpp
+Cell.o : Cell.cpp Cell.hpp Atom.hpp Manager.hpp
 	$(CC) -c Cell.cpp
 
 Manager.o : Manager.cpp Manager.hpp

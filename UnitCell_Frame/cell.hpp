@@ -57,10 +57,11 @@ public:
 
 	Cell( std::string );
 	
-	void ShowBasicCellInfo() const;
-
 	void CalcCoulombEnergy();					// () field can potentially be used for adding constraints, e.g., E fields later by overloading
 	void CalcCoulombDerivative();
+
+	void ShowBasicCellInfo() const;
+	void ShowEnergyDerivative() const;
 
 	virtual ~Cell();
 
