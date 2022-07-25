@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>	// Matrix/Vector Arithematics?
 #include <string>
+#include <chrono>
 
 #include "Atom.hpp"
 
@@ -42,15 +43,15 @@ private:
 	double mono_real_energy, mono_reci_energy, mono_reci_self_energy;
 	double mono_total_energy;
 
-
 	// Cell Strain Derivatives
 	Eigen::Matrix3d lattice_sd;	// ordering convention - e11(xx), e22(yy), e33(zz), e12(xy), e13(xz), e23(yz)
 					//			 e1       e2       e3       e6       e5       e4
-
 	// PERIODIC SUM WORKING VARIABLES
 
 
-
+	// Wtime
+	 std::chrono::duration<double> energy_wtime;
+	 std::chrono::duration<double> derivative_wtime;		// std::cout << this->energy_wtime.count() << " s\n";
 
 public:
 

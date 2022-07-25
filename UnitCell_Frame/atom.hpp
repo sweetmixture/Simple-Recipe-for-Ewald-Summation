@@ -66,9 +66,17 @@ public:
 
 class Shell : public Atom
 {
+private:
 
+	double shell_charge;			// Shell charge
 
+	Eigen::Vector3d shell_frac;		// Below all same but for 'Shell'
+	Eigen::Vector3d shell_cart;
+	
+	Eigen::Vector3d shell_cart_gd;
+	Eigen::Vector3d shell_cart_gd_int;
 
+public:
 
 };
 

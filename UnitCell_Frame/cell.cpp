@@ -3,12 +3,27 @@
 #include <sstream>
 #include <string>
 #include <iomanip>
+#include <chrono>
 
 #include <cstdlib>
 #include <cmath>
+#include <ctime>
 
 #include "cell.hpp"
 #include "Manager.hpp"
+
+std::string currentDateTime()
+{
+	std::time_t t = std::time(nullptr);
+	std::tm* now = std::localtime(&t);
+
+	char buffer[128];
+	strftime(buffer, sizeof(buffer), "%m-%d-%Y %X", now);
+	return buffer;
+}
+
+
+
 
 static int line_cnt = 0;
 
@@ -179,13 +194,8 @@ Cell::Cell( std::string input )
 							std::exit(EXIT_FAILURE);
 						}
 					*/
+
 				}// end if 'species'
-
-
-
-
-
-
 			}//	end length
 		}// end for getline()
 	fp.close();
@@ -201,48 +211,35 @@ Cell::Cell( std::string input )
 	int max_grid     = static_cast<int>(std::max(this->rcut,this->gcut)/lattice_min+1);
 	this->h_max = this->k_max = this->l_max = max_grid; 
 
-//std::cout << "lattice min : " << lattice_min << "\n";
-//std::cout << "max grid : " << max_grid << std::endl;
-//std::cout << "rcut/gcut: " << rcut << "/" << gcut << std::endl;
-//std::cout << "sigma    : " << sigma << std::endl;
-
 }	// END 'Cell' class initilising
 
 
 void Cell::CalcCoulombEnergy()
 {
-using std::cos, std::sin, std::sqrt;
+	auto start = std::chrono::system_clock::now();
 
 	Manager manager;	// Managing class - interaction
 
 	Eigen::Vector3d trans;
-	double trans_norm;
-
-	Eigen::Vector3d delta_r;
-	Eigen::Vector3d delta_g;
-	double g_norm, g_sqr;
-	double r_norm, r_sqr;		// Aux variables
+	Eigen::Vector3d delta_r, delta_rij;
 
 	this->mono_real_energy = this->mono_reci_energy = this->mono_reci_self_energy = this->mono_total_energy = 0.;	// Initialising energies
 
 	for(int i=0;i<this->NumberOfAtoms;i++)
-	{
-		for(int j=0;j<this->NumberOfAtoms;j++)
-		{
-			for(int h = -this->h_max ; h <= this->h_max ; h++)
-			{
-				for(int k = -this->k_max ; k <= this->k_max ; k++)
-				{
-					for(int l = -this->l_max ; l <= this->l_max ; l++)
-					{
-						//// START REAL SPACE
-						trans   = h*this->real_vector[0] + k*this->real_vector[1] + l*this->real_vector[2];	// T = h*a + k*b +l*c
-						delta_r = this->AtomList[i]->cart - this->AtomList[j]->cart - trans;			// ri - rj - T
-						r_norm  = delta_r.norm();
-						r_sqr   = r_norm*r_norm;
+	{	for(int j=0;j<this->NumberOfAtoms;j++)
+		{	
+			delta_rij = this->AtomList[i]->cart - this->AtomList[j]->cart;			// ri - rj
 
+			for(int h = -this->h_max ; h <= this->h_max ; h++)
+			{	for(int k = -this->k_max ; k <= this->k_max ; k++)
+				{	for(int l = -this->l_max ; l <= this->l_max ; l++)
+					{
+						trans   = h*this->real_vector[0] + k*this->real_vector[1] + l*this->real_vector[2];	// T = h*a + k*b +l*c
+						//// START REAL SPACE
 						if( (trans.norm()) < this->rcut )
 						{	
+							delta_r = delta_rij - trans;								// ri - rj - T
+
 							if( h == 0 && k == 0 && l == 0 )
 							{	
 							    if( i != j )
@@ -255,27 +252,22 @@ using std::cos, std::sin, std::sqrt;
 								this->mono_real_energy += manager.CoulombMonoMonoReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 							}
 						}
+
 						//// END REAL SPACE
-
-						//## START RECIPROCAL SPACE
 						trans   = h*this->reci_vector[0] + k*this->reci_vector[1] + l*this->reci_vector[2];	// G = h*2pi*u + k*2pi*v + l*2pi*w
-						g_norm  = trans.norm();									// |G|
-						g_sqr   = g_norm*g_norm;								// |G|^2
 
-						delta_r = this->AtomList[i]->cart - this->AtomList[j]->cart;				// ri - rj
-						
 						if( (trans.norm()) < this->gcut )
 						{
 							if( h == 0 && k == 0 && l == 0 )
 							{
 							    if( i == j )	// Self interaction
 							    {	
-								this->mono_reci_self_energy += manager.CoulombMonoMonoSelf(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								this->mono_reci_self_energy += manager.CoulombMonoMonoSelf(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
 							    }
 							}
 							else
 							{	
-								this->mono_reci_self_energy += manager.CoulombMonoMonoSelf(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								this->mono_reci_energy += manager.CoulombMonoMonoReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
 							}
 						}
 					}// end l
@@ -284,44 +276,24 @@ using std::cos, std::sin, std::sqrt;
 		}// end j
 	}// end i
 
+	// Calculate Totl Energy
 	this->mono_total_energy = this->mono_real_energy + this->mono_reci_energy + this->mono_reci_self_energy;
 
-
-std::cout << "\n";
-std::cout << "Output Val\n";
-std::cout << "Real : " << std::setprecision(16) << this->mono_real_energy << std::endl;
-std::cout << "Reci : " << std::setprecision(16) << this->mono_reci_energy << std::endl;
-std::cout << "Self : " << std::setprecision(16) << this->mono_reci_self_energy << std::endl;
-std::cout << "\n";
-std::cout << "Real : " << std::setprecision(16) << this->mono_real_energy << std::endl;
-std::cout << "Rc+S : " << std::setprecision(16) << this->mono_reci_self_energy + this->mono_reci_energy << std::endl;
-std::cout << "Tota : " << std::setprecision(16) << this->mono_total_energy << std::endl;
-std::cout << "\n";
+	// Wtime measure
+	auto end = std::chrono::system_clock::now();
+	this->energy_wtime = (end - start);
 
 	return;
 }
 
 void Cell::CalcCoulombDerivative()
 {
+	auto start = std::chrono::system_clock::now();
 
-/*
-	Calculates Derivatives
-
-	1) Raw Geometric
-	2) Internal Geometric
-	3) Strain
-*/
 	Manager manager;
 
 	Eigen::Vector3d trans;
-	double trans_norm;
-
-	Eigen::Vector3d delta_r;
-	Eigen::Vector3d delta_g;
-	double g_norm, g_sqr;
-	double r_norm, r_sqr;		// Aux variables
-
-	double q_prod;
+	Eigen::Vector3d delta_rij, delta_r;
 
 	// Init derivative fields
 	for(int i=0;i<this->NumberOfAtoms;i++)
@@ -331,120 +303,65 @@ void Cell::CalcCoulombDerivative()
 	this->lattice_sd.Zero();	// lattice strain derivatives
 
 	for(int i=0;i<this->NumberOfAtoms;i++)
-	{
-		for(int j=0;j<this->NumberOfAtoms;j++)
-		{
-			q_prod = this->AtomList[i]->charge*this->AtomList[j]->charge;			
+	{	for(int j=0;j<this->NumberOfAtoms;j++)
+		{	
+			delta_rij = this->AtomList[i]->cart - this->AtomList[j]->cart;			// ri - rj
 
 			for(int h = -this->h_max ; h <= this->h_max ; h++)
-			{
-				for(int k = -this->k_max ; k <= this->k_max ; k++)
-				{
-					for(int l = -this->l_max ; l <= this->l_max ; l++)
+			{	for(int k = -this->k_max ; k <= this->k_max ; k++)
+				{	for(int l = -this->l_max ; l <= this->l_max ; l++)
 					{
-
 						//// START REAL SPACE
 						trans   = h*this->real_vector[0] + k*this->real_vector[1] + l*this->real_vector[2];	// T = h*a + k*b +l*c
-						delta_r = this->AtomList[i]->cart - this->AtomList[j]->cart - trans;			// ri - rj - T
-						r_norm  = delta_r.norm();
-						r_sqr   = r_norm*r_norm;
 
 						if( (trans.norm()) < this->rcut )
 						{	
+							delta_r = delta_rij - trans;			// ri - rj - T
+
 							if( h == 0 && k == 0 && l == 0 )
 							{	
 							    if( i != j )
 							    {	// Raw Geometric Derivatives
-								this->AtomList[i]->cart_gd += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr))/r_norm * delta_r;
-								this->AtomList[j]->cart_gd -= this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr))/r_norm * delta_r;
-								//this->AtomList[i]->cart_gd += manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
-								//this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								this->AtomList[i]->cart_gd += manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 
-								// Strain Derivatives
-								this->lattice_sd(0,0) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(0);
-								this->lattice_sd(1,1) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(1)/r_norm * delta_r(1);
-								this->lattice_sd(2,2) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(2)/r_norm * delta_r(2);
-								this->lattice_sd(1,2) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(1)/r_norm * delta_r(2);
-								this->lattice_sd(0,2) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(2);
-								this->lattice_sd(0,1) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(1);
+								// Strain Derivatives Real Space Contribution
+								this->lattice_sd += manager.StrainDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 
 							    }	// h=k=l=0 (central image) - excluding self interaction
 							}
 							else
 							{	// Raw Geometric Derivatives
-								this->AtomList[i]->cart_gd += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr))/r_norm * delta_r;
-								this->AtomList[j]->cart_gd -= this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr))/r_norm * delta_r;
+								this->AtomList[i]->cart_gd += manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 
-								// Strain Derivatives
-								this->lattice_sd(0,0) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(0);
-								this->lattice_sd(1,1) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(1)/r_norm * delta_r(1);
-								this->lattice_sd(2,2) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(2)/r_norm * delta_r(2);
-								this->lattice_sd(1,2) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(1)/r_norm * delta_r(2);
-								this->lattice_sd(0,2) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(2);
-								this->lattice_sd(0,1) += this->TO_EV*(0.5*q_prod)*((-2./this->sigma/sqrt(M_PI))*(exp(-r_sqr/this->sigma/this->sigma)/r_norm)-(erfc(r_norm/this->sigma)/r_sqr)) * delta_r(0)/r_norm * delta_r(1);
+								// Strain Derivatives Real Space Contribution
+								this->lattice_sd += manager.StrainDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
 							}
 						}
 						//// END REAL SPACE
 
 						//## START RECIPROCAL SPACE
 						trans   = h*this->reci_vector[0] + k*this->reci_vector[1] + l*this->reci_vector[2];	// G = h*2pi*u + k*2pi*v + l*2pi*w
-						g_norm  = trans.norm();									// |G|
-						g_sqr   = g_norm*g_norm;								// |G|^2
-
-						delta_r = this->AtomList[i]->cart - this->AtomList[j]->cart;				// ri - rj
 						
 						if( (trans.norm()) < this->gcut )
 						{
 							if( h == 0 && k == 0 && l == 0 )
 							{
+								/*
 								if( i == j )	// Self interaction
 								{
 									// Do Nothing ... since the derivatives are zero
 								}
+								*/
 							}
 							else
 							{	// Raw Geometric Derivative
-								this->AtomList[i]->cart_gd += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans;
-								this->AtomList[j]->cart_gd -= this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans;
+								this->AtomList[i]->cart_gd += manager.CoulombDerivativeReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
+								this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
 
-								// Strain derivative (1) - w.r.t. r_vector in the reciprocal space
-								this->lattice_sd(0,0) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans(0) * delta_r(0);
-								this->lattice_sd(1,1) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans(1) * delta_r(1);
-								this->lattice_sd(2,2) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans(2) * delta_r(2);
-								this->lattice_sd(1,2) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans(1) * delta_r(2);
-								this->lattice_sd(0,2) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans(0) * delta_r(2);
-								this->lattice_sd(0,1) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * -sin(trans.adjoint()*delta_r) * trans(0) * delta_r(1);
-
-								// Strain derivative (2) - w.r.t. g_vector in the reciprocal space
-								this->lattice_sd(0,0) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod
-										* (-2.*exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(0)/g_sqr/g_sqr*cos(trans.adjoint()*delta_r)
-										- 0.5 *exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(0)/g_sqr*this->sigma*this->sigma*cos(trans.adjoint()*delta_r)
-										-      exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr*delta_r(0)*sin(trans.adjoint()*delta_r)) * -trans(0);
-								this->lattice_sd(1,1) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod
-										* (-2.*exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(1)/g_sqr/g_sqr*cos(trans.adjoint()*delta_r)
-										- 0.5 *exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(1)/g_sqr*this->sigma*this->sigma*cos(trans.adjoint()*delta_r)
-										-      exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr*delta_r(1)*sin(trans.adjoint()*delta_r)) * -trans(1);
-								this->lattice_sd(2,2) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod
-										* (-2.*exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(2)/g_sqr/g_sqr*cos(trans.adjoint()*delta_r)
-										- 0.5 *exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(2)/g_sqr*this->sigma*this->sigma*cos(trans.adjoint()*delta_r)
-										-      exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr*delta_r(2)*sin(trans.adjoint()*delta_r)) * -trans(2);
-								this->lattice_sd(1,2) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod
-										* (-2.*exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(2)/g_sqr/g_sqr*cos(trans.adjoint()*delta_r)
-										- 0.5 *exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(2)/g_sqr*this->sigma*this->sigma*cos(trans.adjoint()*delta_r)
-										-      exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr*delta_r(2)*sin(trans.adjoint()*delta_r)) * -trans(1);
-								this->lattice_sd(0,2) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod
-										* (-2.*exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(2)/g_sqr/g_sqr*cos(trans.adjoint()*delta_r)
-										- 0.5 *exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(2)/g_sqr*this->sigma*this->sigma*cos(trans.adjoint()*delta_r)
-										-      exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr*delta_r(2)*sin(trans.adjoint()*delta_r)) * -trans(0);
-								this->lattice_sd(0,1) += this->TO_EV*((2.*M_PI)/this->volume)*q_prod
-										* (-2.*exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(1)/g_sqr/g_sqr*cos(trans.adjoint()*delta_r)
-										- 0.5 *exp(-0.25*this->sigma*this->sigma*g_sqr)*trans(1)/g_sqr*this->sigma*this->sigma*cos(trans.adjoint()*delta_r)
-										-      exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr*delta_r(1)*sin(trans.adjoint()*delta_r)) * -trans(0);
-
-								// Strain derivative (3) - w.r.t cell volume in the reciprocal space
-								this->lattice_sd(0,0) += -this->TO_EV*((2.*M_PI)/this->volume/this->volume)*this->volume*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * cos(trans.adjoint()*delta_r);
-								this->lattice_sd(1,1) += -this->TO_EV*((2.*M_PI)/this->volume/this->volume)*this->volume*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * cos(trans.adjoint()*delta_r);
-								this->lattice_sd(2,2) += -this->TO_EV*((2.*M_PI)/this->volume/this->volume)*this->volume*q_prod*exp(-0.25*this->sigma*this->sigma*g_sqr)/g_sqr * cos(trans.adjoint()*delta_r);
+								// Strain Derivatives Reciprocal Space Contribution	// w.r.t 'r', 'V', 'G'
+								this->lattice_sd += manager.StrainDerivativeReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
 							}
 						}
 					}// end l
@@ -457,31 +374,16 @@ void Cell::CalcCoulombDerivative()
 	// Convert raw geometric derivative -> internal geometric derivative
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	AtomList[i]->cart_gd_int = this->lattice_matrix * AtomList[i]->cart_gd;
+		// see Note on ipad (Lattice Dynamics 25 July 2022)
 	}
-	// Symmeterise lattice strain derivative matrix
+	// Symmeterise Strain Derivatives
 	this->lattice_sd(1,0) = this->lattice_sd(0,1);
 	this->lattice_sd(2,0) = this->lattice_sd(0,2);
 	this->lattice_sd(2,1) = this->lattice_sd(1,2);
 
-	std::cout << "1> Law Cartesian Derivative Check\n";
-	for(int i=0;i<this->NumberOfAtoms;i++)
-	{	
-		printf("%12.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd(0),this->AtomList[i]->cart_gd(1),this->AtomList[i]->cart_gd(2));
-	}
-	std::cout << "2> Internal Cartesian Derivative Check\n";
-	for(int i=0;i<this->NumberOfAtoms;i++)
-	{	
-		printf("%12.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd_int(0),this->AtomList[i]->cart_gd_int(1),this->AtomList[i]->cart_gd_int(2));
-	}
-	std::cout << "3> Strain Derivative Check\n";
-	for(int i=0;i<3;i++)
-	{	for(int j=0;j<3;j++)
-		{
-			printf("%12.6lf\t",this->lattice_sd(i,j));
-		}
-		std::cout << "\n";
-	}
-	
+	auto end = std::chrono::system_clock::now();
+	this->derivative_wtime = (end-start);
+
 	return;
 }
 
@@ -494,31 +396,6 @@ Cell::~Cell()
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ////	////	////	////
 
 ////	 OUTPUT CHECK
@@ -527,30 +404,33 @@ Cell::~Cell()
 
 void Cell::ShowBasicCellInfo() const
 {
-
-using std::cout;
-using std::endl;
+	using std::cout;
+	using std::endl;
 
 	cout << endl;
+	cout << "*********************************************************************************************************\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << " Basic Cell Information\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << endl;
-	printf("     Cell Volume (Angs^3) : %12.6lf\n",this->volume);
+	printf("     Lattice Parameters (Angs) : %12.6lf\t%12.6lf\t%12.6lf\n",this->lattice_param(0),this->lattice_param(1),this->lattice_param(2));
+	printf("     Lattice Angles     (Degs) : %12.6lf\t%12.6lf\t%12.6lf\n",180/M_PI*this->lattice_angle(0),180/M_PI*this->lattice_angle(1),180/M_PI*this->lattice_angle(2));
 	cout << endl;
-	cout << "                    x           y          z\n";
-	printf("        a | %12.6lf%12.6lf%12.6lf\n",real_vector[0](0),real_vector[0](1),real_vector[0](2));
-	printf("        b | %12.6lf%12.6lf%12.6lf\n",real_vector[1](0),real_vector[1](1),real_vector[1](2));
-	printf("        c | %12.6lf%12.6lf%12.6lf\n",real_vector[2](0),real_vector[2](1),real_vector[2](2));
+	printf("     Cell Volume      (Angs^3) : %12.6lf\n",this->volume);
 	cout << endl;
-	cout << "                    u           v          w\n";
-	printf("        u | %12.6lf%12.6lf%12.6lf\n",reci_vector[0](0)/(2.*M_PI),reci_vector[0](1)/(2.*M_PI),reci_vector[0](2)/(2.*M_PI));
-	printf("        v | %12.6lf%12.6lf%12.6lf\n",reci_vector[1](0)/(2.*M_PI),reci_vector[1](1)/(2.*M_PI),reci_vector[1](2)/(2.*M_PI));
-	printf("        w | %12.6lf%12.6lf%12.6lf\n",reci_vector[2](0)/(2.*M_PI),reci_vector[2](1)/(2.*M_PI),reci_vector[2](2)/(2.*M_PI));
+	cout <<"                   x           y          z\n";
+	printf("       a | %12.6lf%12.6lf%12.6lf\n",real_vector[0](0),real_vector[0](1),real_vector[0](2));
+	printf("       b | %12.6lf%12.6lf%12.6lf\n",real_vector[1](0),real_vector[1](1),real_vector[1](2));
+	printf("       c | %12.6lf%12.6lf%12.6lf\n",real_vector[2](0),real_vector[2](1),real_vector[2](2));
 	cout << endl;
-	printf("  2pi * u | %12.6lf%12.6lf%12.6lf\n",reci_vector[0](0),reci_vector[0](1),reci_vector[0](2));
-	printf("  2pi * v | %12.6lf%12.6lf%12.6lf\n",reci_vector[1](0),reci_vector[1](1),reci_vector[1](2));
-	printf("  2pi * w | %12.6lf%12.6lf%12.6lf\n",reci_vector[2](0),reci_vector[2](1),reci_vector[2](2));
+	cout <<"                   u           v          w\n";
+	printf("       u | %12.6lf%12.6lf%12.6lf\n",reci_vector[0](0)/(2.*M_PI),reci_vector[0](1)/(2.*M_PI),reci_vector[0](2)/(2.*M_PI));
+	printf("       v | %12.6lf%12.6lf%12.6lf\n",reci_vector[1](0)/(2.*M_PI),reci_vector[1](1)/(2.*M_PI),reci_vector[1](2)/(2.*M_PI));
+	printf("       w | %12.6lf%12.6lf%12.6lf\n",reci_vector[2](0)/(2.*M_PI),reci_vector[2](1)/(2.*M_PI),reci_vector[2](2)/(2.*M_PI));
+	cout << endl;
+	printf(" 2pi * u | %12.6lf%12.6lf%12.6lf\n",reci_vector[0](0),reci_vector[0](1),reci_vector[0](2));
+	printf(" 2pi * v | %12.6lf%12.6lf%12.6lf\n",reci_vector[1](0),reci_vector[1](1),reci_vector[1](2));
+	printf(" 2pi * w | %12.6lf%12.6lf%12.6lf\n",reci_vector[2](0),reci_vector[2](1),reci_vector[2](2));
 	cout << endl;
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << "    Atom fractional coordinate\n";
@@ -568,4 +448,60 @@ using std::endl;
 	for(auto i=0;i<NumberOfAtoms;i++)
 	{	AtomList[i]->ShowCart();
 	}
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << endl;
+	cout << "    Lattice Summation Method (Ewald) / Accuracy Factor : " << -log10(DEF_PERIODIC_SUMM_ACCURACY) << endl;
+	cout << endl;
+	cout << "    Component of energy :\n";
+	cout << "    Real              (eV) : " << std::setprecision(16) << this->mono_real_energy << endl;
+	cout << "    Reciprocal + Self (eV) : " << std::setprecision(16) << this->mono_reci_self_energy + this->mono_reci_energy << endl;
+	cout << "    Total             (eV) : " << std::setprecision(16) << this->mono_total_energy << std::endl;
+	cout << endl;
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << "    Geometric Derivatives            (eV/Angs)\n";
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	for(int i=0;i<this->NumberOfAtoms;i++)
+	{	printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd(0),this->AtomList[i]->cart_gd(1),this->AtomList[i]->cart_gd(2));
+	}
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << "    Internal Geometric Derivatives   (eV/Angs)\n";
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	for(int i=0;i<this->NumberOfAtoms;i++)
+	{	printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd_int(0),this->AtomList[i]->cart_gd_int(1),this->AtomList[i]->cart_gd_int(2));
+	}
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << "    Strain Derivatives               (eV/strain)\n";
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	printf("%12.6s%12.6s%12.6s","e1(xx)","e6(xy)","e5(xz)"); printf("    %12.6lf\t%12.6lf\t%12.6lf\n",this->lattice_sd(0,0),this->lattice_sd(0,1),this->lattice_sd(0,2));
+	printf("%12.6s%12.6s%12.6s","e6(yx)","e2(yy)","e4(yz)"); printf("    %12.6lf\t%12.6lf\t%12.6lf\n",this->lattice_sd(1,0),this->lattice_sd(1,1),this->lattice_sd(1,2));
+	printf("%12.6s%12.6s%12.6s","e5(zx)","e4(zy)","e3(zz)"); printf("    %12.6lf\t%12.6lf\t%12.6lf\n",this->lattice_sd(2,0),this->lattice_sd(2,1),this->lattice_sd(2,2));
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << endl;
+	cout << " Calculation Wtime ( Energy )     : " << std::setprecision(4) << this->energy_wtime.count() << " s\n";
+	cout << " Calculation Wtime ( Derivatives) : " << std::setprecision(4) << this->derivative_wtime.count() << " s\n";
+	cout << endl;
+	cout << " Job Finished at                  : " << currentDateTime() << endl;
+	cout << endl;
+	cout << "---------------------------------------------------------------------------------------------------------\n";
+	cout << endl;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

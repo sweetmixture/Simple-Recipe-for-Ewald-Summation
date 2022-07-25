@@ -19,6 +19,10 @@ public:
 	Eigen::Vector3d CoulombDerivativeReal( const Cell& C, const Atom& Ai, const Atom& Aj, Eigen::Vector3d& TransVector, Eigen::Vector3d& Rij );
 	Eigen::Vector3d CoulombDerivativeReci( const Cell& C, const Atom& Ai, const Atom& Aj, Eigen::Vector3d& TransVector, Eigen::Vector3d& Rij );
 
+	// Strain Derivatives
+	Eigen::Matrix3d StrainDerivativeReal( const Cell& C, const Atom& Ai, const Atom& Aj, Eigen::Vector3d& TransVector, Eigen::Vector3d& Rij );
+	Eigen::Matrix3d StrainDerivativeReci( const Cell& C, const Atom& Ai, const Atom& Aj, Eigen::Vector3d& TransVector, Eigen::Vector3d& Rij );
+
 
 };
 
