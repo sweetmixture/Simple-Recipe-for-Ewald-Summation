@@ -13,7 +13,7 @@
 class Cell
 {
 
-friend class Manager;
+friend class Manager;	// Manager can access Cell privates
 
 private:
 

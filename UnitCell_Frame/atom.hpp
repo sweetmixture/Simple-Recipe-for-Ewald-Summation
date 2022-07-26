@@ -52,10 +52,20 @@ public:
 
 	virtual void ShowCart() const
 	{
-		//printf("%4.3s%12.6lf%12.6lf%12.6lf%8.4s%12.6lf\n",species.c_str(),cart(0),cart(1),cart(2),type.c_str(),charge);
 		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf\n",species.c_str(),"core",cart(0),cart(1),cart(2),charge);
 	}
 
+	virtual void InitialiseDerivative()
+	{
+		this->cart_gd.setZero();
+		this->cart_gd_int.setZero();
+	}
+
+	virtual void UpdateDerivativeInternal( const Eigen::Matrix3d& lattice_matrix )
+	{
+		this->cart_gd_int = lattice_matrix * this->cart_gd;
+	}
+	
 	virtual ~Atom()								// Explicit Destructor Check
 	{	
 		cnt++;
@@ -68,6 +78,10 @@ public:
 
 class Shell : public Atom
 {
+
+friend class Cell;				// Allowing access previlege to 'Cell' class, i.e., Cell can access privates of Atom
+friend class Manager;
+
 private:
 
 	double shel_charge;			// Shell charge
@@ -110,7 +124,21 @@ public:
 	virtual void ShowCart() const override
 	{
 		Atom::ShowCart();
-		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf\n",this->GetSpecies().c_str(),this->GetType().c_str(),shel_cart(0),shel_cart(1),shel_cart(2),shel_charge);
+		printf("%4.3s%8.4s%12.6lf%12.6lf%12.6lf%12.6lf%12.4lf/%.4lf\n",this->GetSpecies().c_str(),this->GetType().c_str(),this->shel_cart(0),this->shel_cart(1),this->shel_cart(2),
+			this->shel_charge,this->spring_k2,this->spring_k4);
+	}
+
+	virtual void InitialiseDerivative() override
+	{	
+		Atom::InitialiseDerivative();
+		this->shel_cart_gd.setZero();
+		this->shel_cart_gd_int.setZero();
+	}
+
+	virtual void UpdateDerivativeInternal( const Eigen::Matrix3d& lattice_matrix )
+	{
+		Atom::UpdateDerivativeInternal( lattice_matrix );
+		this->shel_cart_gd_int = lattice_matrix * this->shel_cart_gd;
 	}
 
 	virtual ~Shell()

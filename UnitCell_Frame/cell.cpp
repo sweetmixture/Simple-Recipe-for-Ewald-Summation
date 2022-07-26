@@ -131,24 +131,29 @@ Cell::Cell( std::string input )
 
 				}// end if 'cell'
 
-				if( !tmp.compare("atom") ) // DynamicMemory Mangement - Atom
+				if( !tmp.compare("atom") )
 				{
 					tmp.clear();
 					ss >> frac[0] >> frac[1] >> frac[2] >> species >> type;
-					ss >> std::skipws; // ignore possible whitespace
 
 					if( !type.compare("core") )
 					{	this->AtomList[NumberOfAtoms++] = new Atom(frac[0],frac[1],frac[2],species,type,this->real_vector);	// here 'real_vector' contains lattice vectors
 					}
 					else if( !type.compare("shel") )
 					{
-						if( ss.peek() == decltype(ss)::traits_type::eof() )	// i.e., if shel position is not specified
-						{	this->AtomList[NumberOfAtoms++] = new Shell(frac[0],frac[1],frac[2],species,type,this->real_vector,frac[0],frac[1],frac[2]);
-						}
-						else							// Case that Shell Frac is given
-						{	double shel_frac[3];	ss >> shel_frac[0] >> shel_frac[1] >> shel_frac[2];
+						double shel_frac[3];
+						ss >> shel_frac[0] >> shel_frac[1] >> shel_frac[2];
+						
+						if( ss.fail() )
+						{	
+							this->AtomList[NumberOfAtoms++] = new Shell(frac[0],frac[1],frac[2],species,type,this->real_vector,frac[0],frac[1],frac[2]);
+						}	// Exception 1 - if shell position is not specified
+						else							
+						{	
 							this->AtomList[NumberOfAtoms++] = new Shell(frac[0],frac[1],frac[2],species,type,this->real_vector,shel_frac[0],shel_frac[1],shel_frac[2]);
-						}
+
+							// Possibly add 'warning' if core-shell distance is too far
+						}	// Exception 2 - if shell position is specified
 					}
 					else if( !type.compare("lone") )
 					{	// Need appropriate initialiser
@@ -166,7 +171,6 @@ Cell::Cell( std::string input )
 				{
 					tmp.clear();
 					ss >> species >> type >> charge;
-					ss >> std::skipws;
 
 					for(int i=0;i<this->NumberOfAtoms;i++)
 					{	
@@ -179,7 +183,7 @@ Cell::Cell( std::string input )
 							{	
 								double shel_charge, k2, k4;
 								ss >> shel_charge >> k2 >> k4;
-								AtomList[i]->SetFeature(charge,shel_charge,k2,k4);
+								AtomList[i]->SetFeature(charge,shel_charge,k2,k4);	// override function
 							}
 							else if( !type.compare("lone") )
 							{	// Need appropriate initialiser
@@ -227,14 +231,12 @@ void Cell::CalcCoulombEnergy()
 	Eigen::Vector3d trans;
 	Eigen::Vector3d delta_r, delta_rij;
 
-	this->mono_real_energy = this->mono_reci_energy = this->mono_reci_self_energy = this->mono_total_energy = 0.;	// Initialising energies
+	manager.InitialiseEnergy(*this);
+	//this->mono_real_energy = this->mono_reci_energy = this->mono_reci_self_energy = this->mono_total_energy = 0.;	// Initialising energies
 
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	for(int j=0;j<this->NumberOfAtoms;j++)
-		{	
-			delta_rij = this->AtomList[i]->cart - this->AtomList[j]->cart;			// ri - rj
-
-			for(int h = -this->h_max ; h <= this->h_max ; h++)
+		{	for(int h = -this->h_max ; h <= this->h_max ; h++)
 			{	for(int k = -this->k_max ; k <= this->k_max ; k++)
 				{	for(int l = -this->l_max ; l <= this->l_max ; l++)
 					{
@@ -242,21 +244,18 @@ void Cell::CalcCoulombEnergy()
 						//// START REAL SPACE
 						if( (trans.norm()) < this->rcut )
 						{	
-							delta_r = delta_rij - trans;								// ri - rj - T
-
 							if( h == 0 && k == 0 && l == 0 )
 							{	
 							    if( i != j )
 							    {
-								this->mono_real_energy += manager.CoulombMonoMonoReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								manager.CoulombMonoMonoReal(*this,i,j,trans);
 							    }	// h=k=l=0 (central image) - excluding self interaction
 							}
 							else
 							{
-								this->mono_real_energy += manager.CoulombMonoMonoReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								manager.CoulombMonoMonoReal(*this,i,j,trans);
 							}
 						}
-
 						//// END REAL SPACE
 						trans   = h*this->reci_vector[0] + k*this->reci_vector[1] + l*this->reci_vector[2];	// G = h*2pi*u + k*2pi*v + l*2pi*w
 
@@ -266,12 +265,12 @@ void Cell::CalcCoulombEnergy()
 							{
 							    if( i == j )	// Self interaction
 							    {	
-								this->mono_reci_self_energy += manager.CoulombMonoMonoSelf(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
+								manager.CoulombMonoMonoSelf(*this,i,j,trans);
 							    }
 							}
 							else
 							{	
-								this->mono_reci_energy += manager.CoulombMonoMonoReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
+								manager.CoulombMonoMonoReci(*this,i,j,trans);
 							}
 						}
 					}// end l
@@ -299,19 +298,11 @@ void Cell::CalcCoulombDerivative()
 	Eigen::Vector3d trans;
 	Eigen::Vector3d delta_rij, delta_r;
 
-	// Init derivative fields
-	for(int i=0;i<this->NumberOfAtoms;i++)
-	{
-		this->AtomList[i]->cart_gd.Zero();
-	}	
-	this->lattice_sd.Zero();	// lattice strain derivatives
+	manager.InitialiseDerivative(*this);
 
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	for(int j=0;j<this->NumberOfAtoms;j++)
-		{	
-			delta_rij = this->AtomList[i]->cart - this->AtomList[j]->cart;			// ri - rj
-
-			for(int h = -this->h_max ; h <= this->h_max ; h++)
+		{	for(int h = -this->h_max ; h <= this->h_max ; h++)
 			{	for(int k = -this->k_max ; k <= this->k_max ; k++)
 				{	for(int l = -this->l_max ; l <= this->l_max ; l++)
 					{
@@ -320,27 +311,22 @@ void Cell::CalcCoulombDerivative()
 
 						if( (trans.norm()) < this->rcut )
 						{	
-							delta_r = delta_rij - trans;			// ri - rj - T
-
 							if( h == 0 && k == 0 && l == 0 )
 							{	
 							    if( i != j )
-							    {	// Raw Geometric Derivatives
-								this->AtomList[i]->cart_gd += manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
-								this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
-
+							    {	
+								// Raw Geometric Derivatives
+								manager.CoulombDerivativeReal(*this,i,j,trans);
 								// Strain Derivatives Real Space Contribution
-								this->lattice_sd += manager.StrainDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
-
+								manager.StrainDerivativeReal(*this,i,j,trans);
 							    }	// h=k=l=0 (central image) - excluding self interaction
 							}
 							else
-							{	// Raw Geometric Derivatives
-								this->AtomList[i]->cart_gd += manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
-								this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
-
+							{
+								// Raw Geometric Derivatives
+								manager.CoulombDerivativeReal(*this,i,j,trans);
 								// Strain Derivatives Real Space Contribution
-								this->lattice_sd += manager.StrainDerivativeReal(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_r);
+								manager.StrainDerivativeReal(*this,i,j,trans);
 							}
 						}
 						//// END REAL SPACE
@@ -361,11 +347,9 @@ void Cell::CalcCoulombDerivative()
 							}
 							else
 							{	// Raw Geometric Derivative
-								this->AtomList[i]->cart_gd += manager.CoulombDerivativeReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
-								this->AtomList[j]->cart_gd -= manager.CoulombDerivativeReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
-
+								manager.CoulombDerivativeReci(*this,i,j,trans);
 								// Strain Derivatives Reciprocal Space Contribution	// w.r.t 'r', 'V', 'G'
-								this->lattice_sd += manager.StrainDerivativeReci(*this,*this->AtomList[i],*this->AtomList[j],trans,delta_rij);
+								manager.StrainDerivativeReci(*this,i,j,trans);
 							}
 						}
 					}// end l
@@ -377,7 +361,8 @@ void Cell::CalcCoulombDerivative()
 
 	// Convert raw geometric derivative -> internal geometric derivative
 	for(int i=0;i<this->NumberOfAtoms;i++)
-	{	AtomList[i]->cart_gd_int = this->lattice_matrix * AtomList[i]->cart_gd;
+	{	
+		AtomList[i]->UpdateDerivativeInternal(this->lattice_matrix);
 		// see Note on ipad (Lattice Dynamics 25 July 2022)
 	}
 	// Symmeterise Strain Derivatives
@@ -468,6 +453,10 @@ void Cell::ShowEnergyDerivative() const
 	cout << "    Lattice Summation Method (Ewald) / Accuracy Factor : " << -log10(DEF_PERIODIC_SUMM_ACCURACY) << endl;
 	cout << endl;
 	cout << "    Component of energy :\n";
+	cout << endl;
+	cout << "    Reci Self         (eV) : " << std::setprecision(16) << this->mono_reci_self_energy << endl;
+	cout << "    Reci              (eV) : " << std::setprecision(16) << this->mono_reci_energy << endl;
+	cout << endl;
 	cout << "    Real              (eV) : " << std::setprecision(16) << this->mono_real_energy << endl;
 	cout << "    Reciprocal + Self (eV) : " << std::setprecision(16) << this->mono_reci_self_energy + this->mono_reci_energy << endl;
 	cout << "    Total             (eV) : " << std::setprecision(16) << this->mono_total_energy << std::endl;
