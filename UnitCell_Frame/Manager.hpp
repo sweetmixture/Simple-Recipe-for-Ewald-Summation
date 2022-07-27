@@ -21,6 +21,7 @@ public:
 
 	// First Geometric Derivatives
 	void CoulombDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
+	void CoulombDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 	void CoulombDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 
 	// Strain Derivatives

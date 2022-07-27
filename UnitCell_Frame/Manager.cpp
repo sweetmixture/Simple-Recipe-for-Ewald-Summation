@@ -108,21 +108,14 @@ void Manager::CoulombMonoMonoSelf( Cell& C, const int i, const int j, const Eige
 
 		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - static_cast<Shell*>(C.AtomList[j])->cart;
 
-		if ( Rij.norm() == 0 )
+		if ( Rij.norm() != 0. )	// if shell / core is seperated !
 		{
-			C.mono_reci_self_energy += -0.5*(Qic*Qjc + Qic*Qis + Qis*Qic + Qis*Qis)*2./C.sigma/sqrt(M_PI) * C.TO_EV;
+			C.mono_reci_self_energy += -0.5*(Qic*Qjc + Qis*Qis)*2./C.sigma/sqrt(M_PI) * C.TO_EV;
+			C.mono_reci_self_energy += -(Qic*Qjs)/Rij.norm()*erf(Rij.norm()/C.sigma)* C.TO_EV;
 		}
 		else
-		{	std::cout << " Not Same\n";
-			std::cout << TransVector << std::endl;
-			std::cout << Rij << " norm: " << Rij.norm() <<std::endl;
-			std::cout << "SC contribution : " << -(Qic*Qjs)/Rij.norm()*erf(Rij.norm()/C.sigma)* C.TO_EV << std::endl;
-			C.mono_reci_self_energy += -0.5*(Qic*Qjc + Qis*Qis)*2./C.sigma/sqrt(M_PI) * C.TO_EV;
-			/* // Contribution by Core-Shell Separation 
-			C.mono_reci_self_energy += -0.5*(Qic*Qjs)/Rij.norm()*erf(Rij.norm()/C.sigma)* C.TO_EV;
-			C.mono_reci_self_energy += -0.5*(Qic*Qjs)/Rij.norm()*erf(Rij.norm()/C.sigma)* C.TO_EV;
-			*/
-			C.mono_reci_self_energy += -(Qic*Qjs)/Rij.norm()*erf(Rij.norm()/C.sigma)* C.TO_EV;
+		{
+			C.mono_reci_self_energy += -0.5*(Qic*Qjc + Qic*Qis + Qis*Qic + Qis*Qis)*2./C.sigma/sqrt(M_PI) * C.TO_EV;
 		}
 			
         }       
@@ -198,7 +191,9 @@ void Manager::CoulombMonoMonoReci( Cell& C, const int i, const int j, const Eige
         }       
 } 
 
-// Geometric (RAW) Derivatives
+////	////	////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////
+
+////	Geometric (RAW) Derivatives
 
 void Manager::CoulombDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
 {
@@ -225,15 +220,138 @@ void Manager::CoulombDerivativeReal( Cell& C, const int i, const int j, const Ei
         
 	if( C.AtomList[i]->type == "core" && C.AtomList[j]->type == "shel" ) 
         {
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+	
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		C.AtomList[i]->cart_gd += intact*Rij;
+		C.AtomList[j]->cart_gd -= intact*Rij;
+		
+		// Core - Shell
+		Qi = C.AtomList[i]->charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = C.AtomList[i]->cart - static_cast<Shell*>(C.AtomList[j])->shel_cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+// r_norm, r_sqr were missed!!!!
+	
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		C.AtomList[i]->cart_gd += intact*Rij;
+		static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact*Rij;
+
         }       
         
 	if( C.AtomList[i]->type == "shel" && C.AtomList[j]->type == "core" ) 
         {
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+	
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		C.AtomList[i]->cart_gd += intact*Rij;
+		C.AtomList[j]->cart_gd -= intact*Rij;
+
+		// Shel - Core
+		Qi = static_cast<Shell*>(C.AtomList[i])->shel_charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - C.AtomList[j]->cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		static_cast<Shell*>(C.AtomList[i])->shel_cart_gd += intact*Rij;
+		C.AtomList[j]->cart_gd -= intact*Rij;
         }       
         
 	if( C.AtomList[i]->type == "shel" && C.AtomList[j]->type == "shel" ) 
         {
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+	
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		C.AtomList[i]->cart_gd += intact*Rij;
+		C.AtomList[j]->cart_gd -= intact*Rij;
+		
+		// Core - Shell
+		Qi = C.AtomList[i]->charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = C.AtomList[i]->cart - static_cast<Shell*>(C.AtomList[j])->shel_cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+// r_norm, r_sqr were missed!!!!
+
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		C.AtomList[i]->cart_gd += intact*Rij;
+		static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact*Rij;
+
+		// Shell - Core
+		Qi = static_cast<Shell*>(C.AtomList[i])->shel_charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - C.AtomList[j]->cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		static_cast<Shell*>(C.AtomList[i])->shel_cart_gd += intact*Rij;
+		C.AtomList[j]->cart_gd -= intact*Rij;
+
+		// Shell - Shell
+		Qi = static_cast<Shell*>(C.AtomList[i])->shel_charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - static_cast<Shell*>(C.AtomList[j])->shel_cart - TransVector;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+
+		intact = C.TO_EV*(0.5*Qi*Qj)*((-2./C.sigma/sqrt(M_PI))*(exp(-r_sqr/C.sigma/C.sigma)/r_norm)-(erfc(r_norm/C.sigma)/r_sqr))/r_norm;
+
+		static_cast<Shell*>(C.AtomList[i])->shel_cart_gd += intact*Rij;
+		static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact*Rij;
         }       
+}
+
+void Manager::CoulombDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
+{
+	double Qi,Qj;
+	double r_norm,r_sqr;
+	Eigen::Vector3d Rij;
+	
+	double intact;
+
+	if( C.AtomList[i]->type == "shel" && C.AtomList[j]->type == "shel" ) 
+        {
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = C.AtomList[i]->cart - static_cast<Shell*>(C.AtomList[j])->shel_cart;
+		r_norm = Rij.norm();
+		r_sqr  = r_norm*r_norm;
+
+		if ( r_norm != 0. )
+		{
+			intact = -Qi*Qj*(2./C.sigma/sqrt(M_PI)*exp(-r_sqr/C.sigma/C.sigma)/r_sqr - erf(r_norm/C.sigma)/r_norm/r_sqr) * C.TO_EV;
+
+			C.AtomList[i]->cart_gd += intact * Rij;
+			static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact * Rij;
+		}
+	}
 }       
 
 void Manager::CoulombDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
@@ -259,15 +377,92 @@ void Manager::CoulombDerivativeReci( Cell& C, const int i, const int j, const Ei
         }       
         
 	if( C.AtomList[i]->type == "core" && C.AtomList[j]->type == "shel" ) 
-        {
+        {	
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		C.AtomList[i]->cart_gd += intact * TransVector;
+		C.AtomList[j]->cart_gd -= intact * TransVector;
+
+		// Core - Shell
+		Qi = C.AtomList[i]->charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = C.AtomList[i]->cart - static_cast<Shell*>(C.AtomList[j])->shel_cart;
+
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		C.AtomList[i]->cart_gd += intact * TransVector;
+		static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact * TransVector;
         }       
         
 	if( C.AtomList[i]->type == "shel" && C.AtomList[j]->type == "core" ) 
         {
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		C.AtomList[i]->cart_gd += intact * TransVector;
+		C.AtomList[j]->cart_gd -= intact * TransVector;
+
+		// Shell - Core
+		Qi = static_cast<Shell*>(C.AtomList[i])->shel_charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - C.AtomList[j]->cart;
+	
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		static_cast<Shell*>(C.AtomList[i])->shel_cart_gd += intact * TransVector;
+		C.AtomList[j]->cart_gd -= intact * TransVector;
         }       
         
 	if( C.AtomList[i]->type == "shel" && C.AtomList[j]->type == "shel" ) 
         {
+		// Core - Core
+		Qi = C.AtomList[i]->charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		C.AtomList[i]->cart_gd += intact * TransVector;
+		C.AtomList[j]->cart_gd -= intact * TransVector;
+
+		// Core - Shell
+		Qi = C.AtomList[i]->charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = C.AtomList[i]->cart - static_cast<Shell*>(C.AtomList[j])->shel_cart;
+
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		C.AtomList[i]->cart_gd += intact * TransVector;
+		static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact * TransVector;
+
+		// Shell - Core
+		Qi = static_cast<Shell*>(C.AtomList[i])->shel_charge;
+		Qj = C.AtomList[j]->charge;
+		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - C.AtomList[j]->cart;
+	
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		static_cast<Shell*>(C.AtomList[i])->shel_cart_gd += intact * TransVector;
+		C.AtomList[j]->cart_gd -= intact * TransVector;
+
+		// Shell - Shell
+		Qi = static_cast<Shell*>(C.AtomList[i])->shel_charge;
+		Qj = static_cast<Shell*>(C.AtomList[j])->shel_charge;
+		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - static_cast<Shell*>(C.AtomList[j])->shel_cart;
+	
+		intact = C.TO_EV*((2.*M_PI)/C.volume)*Qi*Qj*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr * -sin(TransVector.adjoint()*Rij);
+
+		static_cast<Shell*>(C.AtomList[i])->shel_cart_gd += intact * TransVector;
+		static_cast<Shell*>(C.AtomList[j])->shel_cart_gd -= intact * TransVector;
         }       
 }       
 

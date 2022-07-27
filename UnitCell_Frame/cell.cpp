@@ -338,12 +338,11 @@ void Cell::CalcCoulombDerivative()
 						{
 							if( h == 0 && k == 0 && l == 0 )
 							{
-								/*
 								if( i == j )	// Self interaction
 								{
 									// Do Nothing ... since the derivatives are zero
+									manager.CoulombDerivativeSelf(*this,i,j,trans);
 								}
-								*/
 							}
 							else
 							{	// Raw Geometric Derivative
@@ -467,11 +466,29 @@ void Cell::ShowEnergyDerivative() const
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd(0),this->AtomList[i]->cart_gd(1),this->AtomList[i]->cart_gd(2));
 	}
+	for(int i=0;i<this->NumberOfAtoms;i++)
+	{	if( !AtomList[i]->type.compare("shel") )
+		{
+		printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),
+				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd(0),
+				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd(1),
+				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd(2));
+		}
+	}
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << "    Internal Geometric Derivatives   (eV/Angs)\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd_int(0),this->AtomList[i]->cart_gd_int(1),this->AtomList[i]->cart_gd_int(2));
+	}
+	for(int i=0;i<this->NumberOfAtoms;i++)
+	{	if( !AtomList[i]->type.compare("shel") )
+		{
+		printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),
+				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd_int(0),
+				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd_int(1),
+				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd_int(2));
+		}
 	}
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	cout << "    Strain Derivatives               (eV/strain)\n";
