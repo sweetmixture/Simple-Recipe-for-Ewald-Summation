@@ -340,8 +340,9 @@ void Cell::CalcCoulombDerivative()
 							{
 								if( i == j )	// Self interaction
 								{
-									// Do Nothing ... since the derivatives are zero
-									manager.CoulombDerivativeSelf(*this,i,j,trans);
+									manager.CoulombDerivativeSelf(*this,i,j,trans);	// This calculation is not necessary for a system only with point charges
+															// In the presence of ShellModel ions, there are non-zero derivatives by shell-core separation
+									manager.StrainDerivativeSelf(*this,i,j,trans);
 								}
 							}
 							else

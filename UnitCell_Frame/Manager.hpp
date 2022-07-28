@@ -8,10 +8,8 @@
 class Manager // Interaction Manager
 {
 public:
-	
 	void InitialiseEnergy( Cell& C );
-	void InitialiseDerivative( Cell& C );
-
+	void InitialiseDerivative( Cell& C );	// Most function - Eign::VECMAT::setZero()
 
 	// Monopole - Monopole Interaction (charge vs charge)
 	// decltype intrinsic - tells 'core-core', 'shell-core', 'core-shgl'
@@ -26,8 +24,8 @@ public:
 
 	// Strain Derivatives
 	void StrainDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
+	void StrainDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 	void StrainDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
-
 };
 
 #endif
