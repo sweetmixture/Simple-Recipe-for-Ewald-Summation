@@ -9,7 +9,6 @@ int main()
 	c.ShowBasicCellInfo();
 	c.CalcCoulombEnergy();
 	c.CalcCoulombDerivative();
-	c.CalcCoulombDerivative();
 	c.ShowEnergyDerivative();
 	return 0;
 }

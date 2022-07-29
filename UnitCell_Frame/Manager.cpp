@@ -6,14 +6,44 @@
 
 void Manager::InitialiseEnergy( Cell& C )
 {
+	C.energy_real_sum_cnt = 0;
+	C.energy_reci_sum_cnt = 0;
 	C.mono_real_energy = C.mono_reci_energy = C.mono_reci_self_energy = C.mono_total_energy = 0.;
 }
 
 void Manager::InitialiseDerivative( Cell& C )
-{
+{	
+	C.derivative_real_sum_cnt = 0;
+	C.derivative_reci_sum_cnt = 0;
 	for(int i=0;i<C.NumberOfAtoms;i++) {	C.AtomList[i]->InitialiseDerivative();	}		// Initialise Derivative Field
 	C.lattice_sd.setZero();										// Initialise Strain Drivative Field
 }
+
+////	Optimise Periodic Summation Workload
+
+void Manager::InitialisePeriodicSysParameter( Cell& C )		// Prepare Parameters - Periodic Summation
+{
+	int NumberOfObject = 0;
+
+	for(int i=0;i<C.NumberOfAtoms;i++)
+	{	NumberOfObject++;
+		if( C.AtomList[i]->type == "shel" ) { NumberOfObject++; }
+	}
+
+	C.sigma = pow(C.weight*NumberOfObject*M_PI*M_PI*M_PI/C.volume/C.volume,-1./6.);
+	C.rcut  = std::sqrt(-log(C.accuracy)*C.sigma*C.sigma);
+	C.gcut  = 2./C.sigma*std::sqrt(-log(C.accuracy));
+
+
+	C.h_max  = static_cast<int>(C.rcut / C.real_vector[0].norm());
+	C.k_max  = static_cast<int>(C.rcut / C.real_vector[1].norm());
+	C.l_max  = static_cast<int>(C.rcut / C.real_vector[2].norm());
+	C.ih_max = static_cast<int>(C.gcut / C.reci_vector[0].norm());
+	C.ik_max = static_cast<int>(C.gcut / C.reci_vector[1].norm());
+	C.il_max = static_cast<int>(C.gcut / C.reci_vector[2].norm());
+}
+
+////	Coulomb Interaction ( Periodic Summation )
 
 void Manager::CoulombMonoMonoReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
 {
