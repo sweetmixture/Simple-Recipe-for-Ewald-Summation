@@ -149,6 +149,10 @@ O  core 0.00 0.00 0.50
 	int nx,ny,nz;	// variables for translational cell images;
 
 	auto lattice_min = std::min({2.*M_PI/Lx,2.*M_PI/Ly,2.*M_PI/Lz,Lx,Ly,Lz});		// This part requires more sophisticate implementation for a general use later
+
+	printf("%12.6lf\n%12.6lf\n%12.6lf\n%12.6lf\n%12.6lf\n%12.6lf\n",2.*M_PI/Lx,2.*M_PI/Ly,2.*M_PI/Lz,Lx,Ly,Lz);
+
+	cout << "lattice_min : " << lattice_min << "\n";
 	int max_grid = static_cast<int>(std::max(rcut,gcut)/lattice_min +1);
 	nx = max_grid;
 	ny = max_grid;
